@@ -324,6 +324,7 @@ static void motionnotify(uint32_t time, struct wlr_input_device *device, double 
 		double sy, double sx_unaccel, double sy_unaccel);
 static void motionrelative(struct wl_listener *listener, void *data);
 static void moveresize(const Arg *arg);
+unsigned int nextocctag(int);
 static void outputmgrapply(struct wl_listener *listener, void *data);
 static void outputmgrapplyortest(struct wlr_output_configuration_v1 *config, int test);
 static void outputmgrtest(struct wl_listener *listener, void *data);
@@ -366,6 +367,7 @@ static void updatemons(struct wl_listener *listener, void *data);
 static void updatetitle(struct wl_listener *listener, void *data);
 static void urgent(struct wl_listener *listener, void *data);
 static void view(const Arg *arg);
+static void viewnextocctag(const Arg *argint);
 static void virtualkeyboard(struct wl_listener *listener, void *data);
 static void virtualpointer(struct wl_listener *listener, void *data);
 static Monitor *xytomon(double x, double y);
@@ -2186,6 +2188,26 @@ moveresize(const Arg *arg)
 	}
 }
 
+unsigned int
+nextocctag(int direction)
+{
+	unsigned int seltag = selmon->tagset[selmon->seltags];
+	unsigned int occ = 0, i;
+	Client *c;
+
+	wl_list_for_each(c, &clients, link)
+		occ |= c->tags;
+
+	for (i=0; i<TAGCOUNT; i++) {
+		seltag = (direction > 0) ?
+			(seltag == (1u << (TAGCOUNT - 1)) ? 1u : seltag << 1) :
+			(seltag == 1 ? (1u << (TAGCOUNT - 1)) : seltag >> 1);
+		if (seltag & occ)
+			break;
+	}
+
+	return seltag & TAGMASK;
+}
 void
 outputmgrapply(struct wl_listener *listener, void *data)
 {
@@ -3218,6 +3240,17 @@ view(const Arg *arg)
 	focusclient(focustop(selmon), 1);
 	arrange(selmon);
 	printstatus();
+}
+
+void
+viewnextocctag(const Arg *arg)
+{
+	unsigned int tmp;
+
+	if ((tmp = nextocctag(arg->i)) == selmon->tagset[selmon->seltags])
+		return;
+
+	view(&(const Arg){.ui = tmp});
 }
 
 void
